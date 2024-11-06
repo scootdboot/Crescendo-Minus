@@ -93,11 +93,13 @@ public class Superstructure {
     public final EventLoop sensorEventLoop = new EventLoop();
     public final EventLoop stateEventLoop = new EventLoop();
 
-    /** true = driver wants to intake */
+    /** true = driver controller input to intake */
     private final Trigger trg_driverIntakeReq;
-    /** true = driver wants to shoot */
+    /** true = driver controller input to shoot */
     private final Trigger trg_driverShootReq;
+    /** true = driver controller input to amp */
     private final Trigger trg_driverAmpReq;
+    /** true = driver controller input to trap */
     private final Trigger trg_driverTrapReq;
 
     private final Trigger trg_autonIntakeReq = new Trigger(() -> autonIntake);
@@ -147,14 +149,17 @@ public class Superstructure {
             log_frontVisiSightIrq.accept(true);
         }
     });
-        
+    
+    /** This goes true when the beam is broken and false when the beam is continuous */
     private boolean conveyorBeamBreakIrq = false;
     private double conveyorBeamBreakIrqLastRising = 0;
     private double conveyorBeamBreakIrqLastFalling = 0;
+    /** This handles the beam break sensor by finding */
     private final SynchronousInterrupt irq_conveyorBeamBreak = new SynchronousInterrupt(conveyorBeamBreak);
     private final BooleanLogger log_conveyorBeamBreakExtended = 
         WaltLogger.logBoolean(kDbTabName, "conveyorBeamBreakExtended", PubSubOption.sendAll(true));
     
+    /** This goes true when the beam is broken and false when the beam is continuous */
     private boolean shooterBeamBreakIrq = false;
     private double shooterBeamBreakIrqLastRising = 0;
     private double shooterBeamBreakIrqLastFalling = 0;
@@ -162,7 +167,9 @@ public class Superstructure {
     private final BooleanLogger log_shooterBeamBreakExtended =
         WaltLogger.logBoolean(kDbTabName, "shooterBeamBreakExtended", PubSubOption.sendAll(true));
 
+    /** Set with a lambda that refers to conveyorBeamBreakIrq and updates on the sensor event loop */
     public final Trigger irqTrg_conveyorBeamBreak;
+    /** Set with a lambda that refers to shooterBeamBreakIrq and updates on the sensor event loop */
     public final Trigger irqTrg_shooterBeamBreak;
 
     private final IntLogger log_state = WaltLogger.logInt(kDbTabName, "state",
@@ -171,6 +178,7 @@ public class Superstructure {
     private final BooleanLogger log_driverShootReq = WaltLogger.logBoolean(kDbTabName, "shootButton");
     private final BooleanLogger log_aimReady = WaltLogger.logBoolean(kDbTabName, "aimReady");
 
+    /** Timer used for determining how long between shoot and a shootReq being registered */
     private Timer timer = new Timer();
         
     public Superstructure(
@@ -199,6 +207,7 @@ public class Superstructure {
         ai_frontVisiSight.setInterruptEdges(true, true);
         ai_frontVisiSight.enable();
 
+        // just configuration stuff to make irqTrg_conveyorBeamBreak and irqTrg_shooterBeamBreak work
         irq_conveyorBeamBreak.setInterruptEdges(true, true);
         irq_shooterBeamBreak.setInterruptEdges(true, true);
 
@@ -231,6 +240,11 @@ public class Superstructure {
         configureShootTimer();
     }
 
+    /**
+     * Rumbles the driver's controller with the given intensity for the given number of seconds
+     * @param intensity - [0,1] - percentage of intensity
+     * @param seconds - Number of seconds for rumble to continue
+     */
    private Command cmdDriverRumble(double intensity, double seconds) {
         return Commands.startEnd(
             () -> {
@@ -242,6 +256,11 @@ public class Superstructure {
             () -> m_driverRumbler.accept(0)).withTimeout(seconds);
     }
 
+    /**
+     * Rumbles the manipulator's controller with the given intensity for the given number of seconds
+     * @param intensity - [0,1] - percentage of intensity
+     * @param seconds - Number of seconds for rumble to continue
+     */
     private Command cmdManipRumble(double intensity, double seconds) {
         return Commands.startEnd(
             () -> {
@@ -253,6 +272,11 @@ public class Superstructure {
             () -> m_manipRumbler.accept(0)).withTimeout(seconds);
     }
 
+    /**
+     * Changes the current state to the state as a parameter
+     * Largely needed for logging and debugging - the main change is that it prints and logs when state changes occur
+     * @param state - The target state for the state change
+     */
     private Command changeStateCmd(NoteState state) {
         return Commands.runOnce(() -> {
             if (m_state == state) { return; }
@@ -262,6 +286,9 @@ public class Superstructure {
         }).withName("SuperStateChange_To" + state);
     }
 
+    /**
+     * Measures and prints how long it takes for a shoot request to result in actually firing
+     */
     private void configureShootTimer() {
         trg_driverShootReq
             .onTrue(Commands.runOnce(() -> timer.restart()))
@@ -275,6 +302,9 @@ public class Superstructure {
         );
     }
 
+    /** 
+     * This contains a lot of stuff and basically none of it is super complicated but you have to look case by case. This contains a lot of the bindings for triggers (potentially all the ones significant to actual function as opposed to logs and diagnostics)
+     */
     private void configureStateTriggers() {
         irqTrg_conveyorBeamBreak.onTrue(Commands.none());
 
@@ -436,6 +466,9 @@ public class Superstructure {
         );
     }
 
+    /** 
+     * @return A command which resets all the flags (and thus all the state triggers) to false
+     */
     private Command resetFlags() { 
         return Commands.runOnce(
             () -> {
@@ -460,6 +493,9 @@ public class Superstructure {
         return extStateTrg_noteIn.getAsBoolean();
     }
 
+    /**
+     * Sets conveyer and intake to stop
+     */
     public Command idleStop() {
         var conveyorCmd = m_conveyor.stop();
         var intakeCmd = m_intake.stop();
@@ -484,6 +520,10 @@ public class Superstructure {
         );
     }
 
+    /**
+     * Evaluates whether there should be a conveyer interrupt request.
+     * No return because it sets conveyerBeamBreakIrq to the corresponding output
+     */
     private void evaluateConveyorIrq() {
         double latestRising = irq_conveyorBeamBreak.getRisingTimestamp();
         double latestFalling = irq_conveyorBeamBreak.getFallingTimestamp();
@@ -524,6 +564,10 @@ public class Superstructure {
         }
     }
 
+    /**
+     * Designed to run very often and very quickly.
+     * Polls triggers and updates a ton of things
+     */
     public void fastPeriodic() {
         // TODO: intake sensor sync eval
         evaluateConveyorIrq();
@@ -553,6 +597,10 @@ public class Superstructure {
         log_state.accept(m_state.idx);
     }
 
+    /**
+     * Sets up as if everything is ready to go for a note to be aimed and fired
+     * @return A command which does the above things
+     */
     public Command forceStateToNoteReady() {
         return Commands.parallel(
             changeStateCmd(NOTE_READY),
