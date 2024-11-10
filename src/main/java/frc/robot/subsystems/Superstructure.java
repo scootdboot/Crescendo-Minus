@@ -276,6 +276,7 @@ public class Superstructure {
      * Changes the current state to the state as a parameter
      * Largely needed for logging and debugging - the main change is that it prints and logs when state changes occur
      * @param state - The target state for the state change
+     * @return A Command that will change the state to the parameter state
      */
     private Command changeStateCmd(NoteState state) {
         return Commands.runOnce(() -> {
