@@ -104,7 +104,7 @@ public class Swerve extends SwerveDrivetrain implements Subsystem {
 	Measure<Angle> m_visionYaw = Rotations.of(0);
 	Timer m_visYawTimer = new Timer();
 
-	private final SysIdSwerveTranslation characterization = new SysIdSwerveTranslation();
+private final SysIdSwerveTranslation characterization = new SysIdSwerveTranslation();
 	// private final SysIdSwerveRotation characterization = new
 	// SysIdSwerveRotation();
 	// private final SysIdSwerveSteerGains characterization = new
@@ -147,6 +147,10 @@ public class Swerve extends SwerveDrivetrain implements Subsystem {
 
 	private final Pose2dLogger log_desiredPose = WaltLogger.logPose2d("Swerve", "desiredPose");
 
+	/**
+	 * Adds a vision measurement to swerve code (SILLY STUFF)
+	 * @param measurement The vision measurement to add
+	 */
 	public void addVisionMeasurement3d(VisionMeasurement3d measurement) {
 		// sadge!
 		var now = Timer.getFPGATimestamp();

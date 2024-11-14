@@ -50,7 +50,9 @@ public class Vision {
 
     public static final record PhotonMeasurement (PhotonTrackedTarget target, double latencyMilliseconds) {}
     public static final record VisionMeasurement2d (Integer id, Double yaw, Double pitch, Double area) {}
+    /** Has an EstimatedRobotPose and a matrix for stdDevs 4 */
     public static final record VisionMeasurement3d (EstimatedRobotPose estimate, Matrix<N3, N1> stdDevs) {}
+    /** Contains a boolean signififying whether the camera has a target and an Optional<VisionMeasurement3d> */
     public static final record VisMeas3dEx (boolean hasTarget, Optional<VisionMeasurement3d> measOpt) {}
     
     // private final Matrix<N3, N1> kDefaultStdDevs = VecBuilder.fill(0.9, 0.9, 0.9);

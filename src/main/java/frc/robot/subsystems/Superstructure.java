@@ -34,6 +34,9 @@ import frc.util.logging.WaltLogger.*;
 
 import static frc.robot.subsystems.Superstructure.NoteState.*;
 
+/**
+ * Used to organize the state machine and handle synchronizing everything in the robot
+ */
 public class Superstructure {
     private final Aim m_aim;
     private final Intake m_intake;
