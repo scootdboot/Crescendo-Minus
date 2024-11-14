@@ -59,6 +59,7 @@ public class Vision {
 
     private final PhotonCamera m_shooterCam = new PhotonCamera("ShooterCam");
     private final PhotonCamera m_frontCam = new PhotonCamera("FrontCam");
+    /** Tenatively the offset between the camera and the robot? */
     private final Transform3d m_frontCam_robotToCam = new Transform3d(
         Units.inchesToMeters(-9.095), Units.inchesToMeters(-11.212), Units.inchesToMeters(10.739), 
         new Rotation3d(Units.degreesToRadians(180), Units.degreesToRadians(0 - 17.8), Units.degreesToRadians(180 - 20)));
@@ -130,16 +131,22 @@ public class Vision {
     public VisMeas3dEx getFrontCamPoseEst() {
         var result = m_frontCam.getLatestResult();
         var estimateOpt = m_frontCam_poseEstimator.update();
+        // if there is no estimate, return a VisMeas3dEx with an empty VisionMeasurement3d
         if (estimateOpt.isEmpty()) return new VisMeas3dEx(result.hasTargets(), Optional.empty());
-        log_frontCamRawEstimate.accept(estimateOpt.get().estimatedPose);
+        
+        // beyond above point there must be an estimate in estimateOpt
+
+        log_frontCamRawEstimate.accept(estimateOpt.get().estimatedPose); // LOGGING
+        // if estimate not in field or beneath the floor bin it
         if (FieldK.inField(estimateOpt.get().estimatedPose) && estimateOpt.get().estimatedPose.getZ() >= -0.2) {
             var filtered = estimateOpt.get();
             var stdDevsOpt = getEstimationStdDevs(filtered.estimatedPose.toPose2d(), result);
             if (stdDevsOpt.isEmpty()) {
                 return new VisMeas3dEx(true, Optional.empty());
             }
+            // if stdDevs is empty, it cannot get past the above lines
             var stdDevs = stdDevsOpt.get();
-            log_frontCamFilteredEstimate.accept(filtered.estimatedPose);
+            log_frontCamFilteredEstimate.accept(filtered.estimatedPose); // LOGGING
             return new VisMeas3dEx(true, Optional.of(new VisionMeasurement3d(filtered, stdDevs)));
         }
 

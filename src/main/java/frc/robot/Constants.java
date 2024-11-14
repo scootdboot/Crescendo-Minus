@@ -65,6 +65,10 @@ public class Constants {
         public static final Measure<Distance> kFieldLength = Meters.of(16.54);
         public static final Measure<Distance> kFieldWidth = Meters.of(8.21);
 
+        /**
+         * @param pose
+         * @return Returns whether or not the given Pose3d is within the bounds of the field
+         */
         public static boolean inField(Pose3d pose) {
             return (pose.getX() > 0
                 && pose.getX() < kFieldLength.in(Meters)
