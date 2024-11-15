@@ -76,6 +76,7 @@ public class Robot extends TimedRobot {
 	private final CommandXboxController manipulator = new CommandXboxController(1);
 
 	private final Swerve swerve = TunerConstants.drivetrain;
+	/** Object of Vision class */
 	private final Vision vision = new Vision();
 	private final Shooter shooter = new Shooter();
 	private final Aim aim = new Aim();
